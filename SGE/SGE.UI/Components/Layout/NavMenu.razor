@@ -1,0 +1,68 @@
+﻿@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject ISesion Sesion
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand">SGE</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="flex-column">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="Expedientes">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Expedientes
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="Tramites">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Tramites
+            </NavLink>
+        </div>
+
+        @if(sesionActual != null && sesionActual.Id == 1)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="Usuarios">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Usuarios
+                </NavLink>
+            </div>
+        }
+    
+        <div class="nav-item px-3">
+            <button class="btn btn-primary" @onclick="ModificarDatos">Datos personales</button>
+        </div>
+
+        <div class="nav-item px-3">
+            <button class="btn btn-danger" @onclick="Cerrar">Cerrar sesión</button>
+        </div>
+
+    </nav>
+</div>
+
+@code
+{
+
+    Usuario? sesionActual;
+
+    protected override void OnInitialized()
+    {
+        this.sesionActual = Sesion.GetSesion();
+    }
+    private void Cerrar()
+    {
+        Sesion.Cerrar();
+        Navegador.NavigateTo("", forceLoad:true);
+    }
+
+    private void ModificarDatos()
+    {
+        Navegador.NavigateTo("/datospersonales");
+    }
+
+}

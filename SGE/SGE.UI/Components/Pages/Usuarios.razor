@@ -1,0 +1,137 @@
+@page "/usuarios"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador
+@inject CasoDeUsoUsuarioBaja BajaUsuarios
+@inject CasoDeUsoUsuarioLista ListaUsuarios
+@inject IServicioAutorizacion autorizacion
+@inject CasoDeUsoUsuarioObtenerPermisos obtnerPermisos
+@inject ISesion Sesion
+
+<PageTitle>Usuarios</PageTitle>
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+<style>
+    table, th, td {
+        border: 1px solid rgb(0, 0, 0.5);
+        border-collapse : collapse;
+        padding: 15px;
+        width: auto;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    th, td {
+        background-color : rgb(255, 255, 255);
+    }
+</style>
+<table style>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Correo electrónico</th>
+            <th>Permisos</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(Usuario usuario in _lista)
+        {
+            <tr>
+                <td>@usuario.Id</td>
+                <td>@usuario.Nombre</td>
+                <td>@usuario.Apellido</td>
+                <td>@usuario.CorreoElectronico</td>
+                
+                <td>    
+                    @foreach(string permiso in @Parseo(usuario))
+                    {
+                        <td>@permiso</td>
+                    }
+                </td>
+                
+                <td>
+                    <button class= "btn btn-primary" @onclick="()=>ModificarUsuario(usuario.Id)">Modificar</button>
+                </td>
+                <td>
+                    <button class="btn btn-danger" @onclick="()=>ConfirmarEliminado(usuario)">Eliminar</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<Confirmacion @ref="dialogo" OnConfirmado="()=>EliminarUsuario(_usuarioEliminado)"/>
+
+@code
+{
+    private string mensajeError = "";
+    private bool mostrarError = false;
+    private Usuario? _usuarioEliminado = null;
+    private Usuario? sesionAct;
+    private List<Usuario> _lista = new List<Usuario>();
+    Confirmacion dialogo = null!;
+
+
+    private List<string>? Parseo(Usuario usuario)
+    {
+        return obtnerPermisos.Ejecutar(usuario.Permisos, sesionAct.Id);
+    }
+
+    protected override void OnInitialized()
+    {
+        sesionAct = Sesion.GetSesion();
+        TodosUsuarios();
+    }
+    private void ModificarUsuario(int id)
+    {
+        Navegador.NavigateTo($"UsuarioHelp/{id}");
+    }
+
+    private void ConfirmarEliminado(Usuario usuario)
+    {
+        _usuarioEliminado = usuario;
+        dialogo.Mensaje = $"¿Desea eliminar el Usuario {usuario.Id}?";
+        dialogo.Mostrar();
+    }
+
+    private void EliminarUsuario(Usuario usuario)
+    {
+        try
+        {
+            BajaUsuarios.Ejecutar(sesionAct.Id, usuario.Id);
+            Navegador.NavigateTo("/usuarios/", forceLoad: true);
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }    
+    private void TodosUsuarios()
+    {
+        try
+        {
+            _lista = ListaUsuarios.Ejecutar(sesionAct.Id);
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}

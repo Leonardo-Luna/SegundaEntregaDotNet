@@ -1,0 +1,229 @@
+@page "/expedientes"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoExpedienteBaja ExpedienteBaja
+@inject CasoDeUsoExpedienteConsultaPorId ConsultaPorId
+@inject CasoDeUsoExpedienteModificacion ExpedienteModificacion
+@inject CasoDeUsoExpedienteConsultaTodos ListarExpedientes
+@inject ISesion Sesion
+@inject IServicioAutorizacion autorizacion
+@inject CasoDeUsoListarTramitePorId ListarTramitePorId
+
+<PageTitle>Expedientes</PageTitle>
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+<div>
+    @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "ExpedienteAlta"))
+    {
+        <button class = "btn btn-primary" @onclick="()=>AltaExpediente()">Agregar Expediente</button>
+    }
+    <br> <br>
+    <button class = "btn btn-primary" @onclick="()=>MostrarPorID()">Filtrar por ID</button>
+</div>
+
+<br>
+
+@if(mostrar)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>Ingrese la ID a buscar</h3>
+            <button class= "btn btn-primary" @onclick="()=>TodosExpedientes()">Borrar filtro</button>
+            <br> <br>
+            <div class="id">
+                <input placeholder= "ID" @bind= "busquedaID" class= "form-control">
+            </div>
+            <br>
+            <button class="btn btn-primary" @onclick="()=>BuscarExpediente(busquedaID)">Aceptar</button>
+        </div>
+    </div>
+}
+
+<style>
+    table, th, td {
+        border: 1px solid rgb(0, 0, 0, 0.5);
+        border-collapse : collapse;
+        padding: 15px;
+        width: auto;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    th, td {
+        background-color : rgb(255, 255, 255);
+    }
+</style>
+<table style>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Carátula</th>
+            <th>Estado</th>
+            <th>ID Usuario</th>
+            <th>Creación</th>
+            <th>Última modificación</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(Expediente expediente in _lista)
+        {
+            <tr>
+                <td>@expediente.ID</td>
+                <td>@expediente.caratula</td>
+                <td>@expediente.Estado</td>
+                <td>@expediente.usuarioID</td>
+                <td>@expediente.fechaYHoraCreacion</td>
+                <td>@expediente.fechaYHoraActualizacion</td>
+                @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "ExpedienteModificacion")){
+                    <td>
+                        <button class= "btn btn-primary" @onclick="()=>ModificarExpediente(expediente)">Modificar</button>
+                    </td>
+                }
+                @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "ExpedienteBaja")){
+                    <td>
+                        <button class="btn btn-danger" @onclick="()=>ConfirmarEliminado(expediente)">Eliminar</button>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if(mostrarTramites)
+{
+    <br>
+    <table style>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ID de Expediente</th>
+                <th>Etiqueta</th>
+                <th>Descripción</th>
+                <th>Creación</th>
+                <th>Última modificación</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(Tramite tramite in _listaTramites)
+            {
+                <tr>
+                    <td>@tramite.ID</td>
+                    <td>@tramite.ExpedienteId</td>
+                    <td>@tramite.Etiqueta</td>
+                    <td>@tramite.Descripcion</td>
+                    <td>@tramite.FechaYHoraCreacion</td>
+                    <td>@tramite.FechaYHoraModificacion</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<Confirmacion @ref="dialogo" OnConfirmado="()=>EliminarExpediente(_expedienteEliminado)"/>
+
+@code
+{
+    private bool mostrarError = false;
+    private string mensajeError = "";
+    private bool mostrar = false;
+    private bool mostrarTramites = false;
+    private Usuario? sesionActual;
+    private List<Expediente> _lista = new List<Expediente>();
+    private List<Tramite> _listaTramites;
+    private int? busquedaID;
+    private Confirmacion dialogo = null!;
+    private Expediente? _expedienteEliminado = null;
+    
+    protected override void OnInitialized()
+    {
+        TodosExpedientes();
+        this.sesionActual = Sesion.GetSesion();
+    }
+    
+    private void ConfirmarEliminado(Expediente expediente)
+    {
+        _expedienteEliminado = expediente;
+        dialogo.Mensaje = $"¿Desea eliminar el Expediente {expediente.ID}?";
+        dialogo.Mostrar();
+    }
+    private void EliminarExpediente(Expediente expediente)
+    {
+        try
+        {
+            if(expediente != null)
+            {
+                mostrarTramites = false;
+                ExpedienteBaja.Ejecutar(expediente.ID, sesionActual.Id);
+                _lista = ListarExpedientes.Ejecutar();
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+    
+    private void AltaExpediente()
+    {
+        Navegador.NavigateTo($"ExpedienteHelp/");
+    }
+    private void ModificarExpediente(Expediente expediente)
+    {
+        Navegador.NavigateTo($"ExpedienteHelp/{expediente.ID}");
+    }
+
+    private void MostrarPorID()
+    {
+        mostrar = true;
+        StateHasChanged();
+    }
+
+    private void BuscarExpediente(int? id)
+    {
+        try
+        {
+            mostrar = false;
+            _lista.Clear();
+            _lista.Add(ConsultaPorId.Ejecutar(id));
+            _listaTramites = ListarTramitePorId.Ejecutar(busquedaID.Value); 
+            mostrarTramites = true;
+            StateHasChanged();
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+
+    private void TodosExpedientes()
+    {
+        try
+        {
+            mostrar = false;
+            _lista = ListarExpedientes.Ejecutar();
+            mostrarTramites = false;
+            StateHasChanged();
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+    
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}

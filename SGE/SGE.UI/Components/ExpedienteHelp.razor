@@ -1,0 +1,132 @@
+@page "/ExpedienteHelp/{ID:int?}"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoExpedienteAlta ExpedienteAlta
+@inject CasoDeUsoExpedienteModificacion ExpedienteModificacion
+@inject CasoDeUsoExpedienteConsultaPorId ExpedientePorID
+@inject ISesion Sesion
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+<div>
+    <h1>Complete la siguiente información</h1>
+    <br>
+</div>
+
+@if(_expedienteNuevo)
+{
+    <div>
+        <h3>Estado inicial: Recién Iniciado</h3>
+    </div>
+}
+else
+{
+    <div>
+        <h3>Ingrese el estado nuevo</h3>
+        @foreach(string estado in ExpedientesEstado)
+        {
+            <button  @onclick="()=>EstadoElegido(estado)">@estado</button>  
+        }
+        <h4>Estado elegido: @estadoModificado</h4>
+    </div>
+}
+
+<div>
+    <h4>Carátula:</h4>
+    <div class="descripcion">
+        <input placeholder= "Carátula" @bind= "expediente.caratula" class= "form-control">
+    </div>
+    <br>
+    
+    <button class="btn btn-primary" @onclick= "()=>OpcionExpediente()">Aceptar</button>
+    
+</div>
+
+@code
+{
+    [Parameter]
+    public int? ID {set;get;}
+    private Expediente expediente = new Expediente();
+    private bool _expedienteNuevo = true;
+    private string estadoModificado = "";
+    private string mensajeError = "";
+    private bool mostrarError = false;
+
+    List<string> ExpedientesEstado = new List<string>
+        {
+            "Recien_Iniciado",
+            "Para_Resolver",
+            "Con_Resolucion",
+            "En_Notificacion",
+            "Finalizado"
+        };
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            if(ID != null)
+            {
+                expediente = ExpedientePorID.Ejecutar(ID.Value);
+                if(expediente != null)
+                {
+                    _expedienteNuevo = false;
+                }
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+
+    private void OpcionExpediente()
+    {
+
+        Usuario? sesionActual = Sesion.GetSesion();
+
+        try
+        {
+            if(sesionActual != null && _expedienteNuevo)
+            {
+                expediente.usuarioID = sesionActual.Id;
+                ExpedienteAlta.Ejecutar(expediente, sesionActual.Id);
+            }
+            else
+            {
+                ExpedienteModificacion.Ejecutar(ID.Value, sesionActual.Id, expediente.caratula, estadoModificado);
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+        finally
+        {
+            if(!mostrarError)
+            {
+                Navegador.NavigateTo("expedientes/");
+            }
+        }
+    }
+
+    private void EstadoElegido(string estado)
+    {
+        estadoModificado = estado;
+    }
+
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}

@@ -1,0 +1,104 @@
+@page "/datospersonales"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject ISesion Sesion
+@inject CasoDeUsoUsuarioModificacion ModificacionUsuario
+
+<PageTitle>Datos personales</PageTitle>
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+@if(sesionIniciada != null)
+{
+    <div>
+        <h3>Modificación de datos personales</h3>
+    </div>
+
+    <div class="descripcion">
+        <input placeholder="Nombre" @bind="_nuevoNombre" class="form-control">
+        <input placeholder="Apellido" @bind="_nuevoApellido" class="form-control">
+        <input placeholder="Correo electrónico" @bind="_nuevoCorreo" class="form-control">
+
+        <input placeholder="Contraseña nueva" type="password" @bind="_newPassword" class="form-control">
+
+        <br>
+    </div>
+    <div class="dialogo-contenido">
+        <button class="btn btn-primary" @onclick="ModificarDatos">Confirmar</button>
+        <button class="btn btn-danger" @onclick="Volver">Cancelar</button>
+    </div>
+}
+else
+{
+    <div>
+        <h3>Debe iniciar sesión antes modificar datos personales.</h3>
+    </div>
+}
+
+@code 
+{
+    private string _nuevoCorreo = "";
+    private string _nuevoNombre = "";
+    private string _nuevoApellido = "";
+    private string _newPassword = "";
+    private Usuario? sesionIniciada;
+    private string mensajeError = "";
+    private bool mostrarError = false;
+
+    protected override void OnInitialized()
+    {
+        sesionIniciada = Sesion.GetSesion();
+    }
+
+    private void Volver()
+    {
+        Navegador.NavigateTo("/expedientes");
+    }
+
+    private void ModificarDatos()
+    {
+
+        try
+        {
+            
+            if(sesionIniciada != null)
+            {
+                Usuario modificacion = new Usuario(_nuevoNombre, _nuevoApellido, _nuevoCorreo, _newPassword, sesionIniciada.Permisos);
+                modificacion.Id = sesionIniciada.Id;
+
+                if(!(string.IsNullOrWhiteSpace(modificacion.Nombre) || string.IsNullOrWhiteSpace(modificacion.Apellido) || string.IsNullOrWhiteSpace(modificacion.CorreoElectronico) || string.IsNullOrWhiteSpace(modificacion.Contrasena)))
+                {
+                    ModificacionUsuario.EjecutarUser(modificacion);
+                    Sesion.CargarSesion(modificacion);
+
+                    Navegador.NavigateTo("/datospersonales", forceLoad: true);
+                    //ForceLoad para que se actualice la Sesión y vacíen campos
+                }
+                else
+                {
+                    throw new Exception("Todos los campos deben estar llenos.");
+                }
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+
+    }
+
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}

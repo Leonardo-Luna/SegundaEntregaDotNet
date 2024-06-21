@@ -1,0 +1,135 @@
+@page "/UsuarioHelp/{ID:int?}"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoAdmModificacion ModificacionUsuario
+@inject CasoDeUsoUsuarioObtenerPermisos obtenerPermisos
+@inject IServicioAutorizacion autorizacion
+@inject CasoDeUsoUsuarioBuscarPorID BuscarPorID
+@inject ISesion Sesion
+
+
+<div>
+    <h1>Complete la siguiente información</h1>
+    <br>
+</div>
+
+<div>
+    <h4>Nombre:</h4>
+    <div class="descripcion">
+        <input @bind="usuario.Nombre" class="form-control">
+    </div>
+    <br>
+
+    <h4>Apellido:</h4>
+    <div class="descripcion">
+        <input @bind="usuario.Apellido" class="form-control">
+    </div>
+    <br>
+
+    <h3>Correo electrónico:</h3>
+    <div class="descripcion">
+        <input @bind="usuario.CorreoElectronico" class="form-control">
+    </div>
+    <br>
+
+    <div>
+        <h3>Permisos:</h3>
+        @foreach(string permiso in PermisosUsuario)
+        {
+            <h4>@permiso</h4>
+        }
+        <br>
+        <h3>Seleccione el permiso del usuario</h3>
+        @foreach(string permiso in TodosPermisos)
+        {
+            <button class="btn btn-light"  @onclick="()=>Elegido(permiso)">@permiso</button>
+        }
+        <br>
+        <button class="btn btn-primary" @onclick="()=>AgregarPermiso()">Agregar</button>
+        <button class="btn btn-primary" @onclick="()=>EliminarPermiso()">Eliminar</button>
+    </div>
+    <br>
+    <button class="btn btn-primary" @onclick="()=>ModificaryVolver()">Aceptar</button>
+
+</div>
+
+@code
+{
+    [Parameter]
+    public int? ID {set;get;}
+    private Usuario usuario = new Usuario();
+
+    private List<string> PermisosUsuario = new List<string>();
+
+    private string mensajeError = "";
+    private string permisoElegido = "";
+
+    List<string> TodosPermisos = new List<string>
+    {
+        "ExpedienteAlta",
+        "ExpedienteBaja",
+        "ExpedienteModificacion",
+        "TramiteAlta",
+        "TramiteBaja",
+        "TramiteModificacion"
+    };
+
+    Usuario? sesionAct = new Usuario();
+    
+    protected override void OnInitialized()
+    {
+        sesionAct = Sesion.GetSesion();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if(ID != null)
+        {
+            try
+            {
+                usuario = BuscarPorID.Ejecutar(ID.Value);
+                Console.Write(usuario.Id);
+                Permisos();
+            }
+            catch(Exception e)
+            {
+                mensajeError = e.Message;
+            }
+        }
+    }
+    
+    private void Permisos()
+    {
+        PermisosUsuario = obtenerPermisos.Ejecutar(usuario.Permisos, sesionAct.Id);
+    }
+
+    private void Elegido(string permiso)
+    {
+        permisoElegido = permiso;    
+    }
+
+    private void AgregarPermiso()
+    {
+        if(permisoElegido != "" && !PermisosUsuario.Contains(permisoElegido))
+        {
+            PermisosUsuario.Add(permisoElegido);
+            permisoElegido = "";
+        }
+    }
+
+    private void EliminarPermiso()
+    {
+        if(permisoElegido != "" && PermisosUsuario.Contains(permisoElegido))
+        {
+            PermisosUsuario.Remove(permisoElegido);
+            permisoElegido = "";
+        }
+            
+    }
+
+    private void ModificaryVolver()
+    {
+        ModificacionUsuario.Ejecutar(usuario, PermisosUsuario, sesionAct.Id);
+        Navegador.NavigateTo("usuarios/");
+    }
+}

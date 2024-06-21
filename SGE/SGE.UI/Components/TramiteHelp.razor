@@ -1,0 +1,138 @@
+@page "/TramiteHelp/{ID:int?}"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoTramiteAlta TramiteAlta
+@inject CasoDeUsoTramiteModificacion TramiteModificacion
+@inject CasoDeUsoTramiteConsultaPorId TramitePorID
+@inject ISesion Sesion
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+<div>
+    <h1>Complete la siguiente información</h1>
+    <br>
+</div>
+
+@if(_tramiteNuevo)
+{
+    <div>
+        <h3>Etiqueta inicial: Escrito Presentado</h3>
+    </div>
+}
+else
+{
+    <div>
+        <h3>Selecciona la etiqueta nueva</h3>
+        @foreach(string etiqueta in TramiteEtiquetas)
+        {
+            <button  @onclick="()=>EtiquetaElegida(etiqueta)">@etiqueta</button>
+            
+        }
+        <h4>Etiqueta elegida: @etiquetaModificada</h4>
+    </div>
+}
+
+<div>
+    <h4>Descripcion:</h4>
+    <div class="descripcion">
+        <input placeholder= "Descripcion" @bind= "tramite.Descripcion" class= "form-control">
+    </div>
+    <br>
+    
+    <h4>Expediente ID:</h4>
+    <div class="id">
+        <input placeholder= "ID expediente" @bind= "tramite.ExpedienteId" class= "form-control">
+    </div>
+    <br>
+
+    <button class="btn btn-primary" @onclick= "()=>OpcionTramite()">Aceptar</button>
+</div>
+
+@code
+{
+    [Parameter]
+    public int? ID {set;get;}
+    private Tramite tramite = new Tramite();
+    private bool _tramiteNuevo = true;
+    private string etiquetaModificada = "";
+    private string mensajeError = "";
+    private bool mostrarError = false;
+
+    List<string> TramiteEtiquetas = new List<string>
+        {
+            "Escrito_Presentado",
+            "Pase_Estudio",
+            "Despacho",
+            "Resolucion",
+            "Notificacion",
+            "Pase_Archivo"
+        };
+    protected override void OnParametersSet()
+    {
+        if(ID != null)
+        {
+            try
+            {
+                tramite = TramitePorID.Ejecutar(ID.Value);
+                if(tramite != null)
+                {
+                    _tramiteNuevo = false;
+                }
+            }
+            catch(Exception e)
+            {
+                mensajeError = e.Message;
+            }
+        }
+    }
+
+    private void OpcionTramite()
+    {
+
+        Usuario? sesionActual = Sesion.GetSesion();
+
+        try
+        {
+            if(sesionActual != null && _tramiteNuevo)
+            {
+                tramite.IdUsuario = sesionActual.Id;
+                TramiteAlta.Ejecutar(tramite, sesionActual.Id);
+            }
+            else
+            {
+                TramiteModificacion.Ejecutar(ID.Value, tramite.Descripcion, etiquetaModificada, sesionActual.Id);
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+        finally
+        {
+            if(!mostrarError)
+            {
+                Navegador.NavigateTo("tramites/");
+            }
+        }
+    }
+
+    private void EtiquetaElegida(string etiqueta)
+    {
+        etiquetaModificada = etiqueta;
+    }
+
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}

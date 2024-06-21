@@ -1,0 +1,52 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject ISesion Sesion
+
+<PageTitle>Inicio</PageTitle>
+
+<div>
+    <h2>Bienvenido al Sistema de Gestión de Expedientes</h2>
+    <br><br>
+    <img src="https://cdn.discordapp.com/attachments/755874933568962813/1253590382676283485/3135820.png?ex=66766885&is=66751705&hm=abefdbd641a3fee6bb6f871477eaa775ac4fc4069bcc139d364d869dbba734b6&">
+</div>
+
+@if(visible)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>¿Cómo desea ingresar al sistema?</h3>
+            <button class="btn btn-primary" @onclick="op1">Iniciar sesión</button>
+            <button class="btn btn-secondary" @onclick="op2">Registrarse</button>
+        </div>
+    </div>    
+}
+
+<InicioYRegistro @ref=opcion Seguir="Mostrar"/>
+
+@code 
+{
+
+    InicioYRegistro opcion = null!;
+    private bool visible = true;
+
+    private void cerrar()
+    {
+        opcion.CerrarSesion();
+    }
+
+    private void op1()
+    {
+        opcion.IniciarSesion();
+    }
+
+    private void op2()
+    {
+        opcion.Registrarse();
+    }
+
+    private void Mostrar()
+    {
+        visible = false;
+    }
+
+}

@@ -1,0 +1,143 @@
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoUsuarioAlta UsuarioAlta
+@inject InicioSesion login
+@inject Registro register
+@inject ISesion Sesion
+
+@if(mostrarErrorInicio)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class="btn btn-primary" @onclick="CerrarMensajeInicio">Confirmar</button>
+        </div>
+    </div>
+}
+
+@if(mostrarErrorRegistro)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class="btn btn-primary" @onclick="CerrarMensajeRegistro">Confirmar</button>
+        </div>
+    </div>
+}
+
+@if(bloqueInicio)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>Ingrese sus credenciales</h3>
+            <div class="descripcion">
+                <input placeholder="Correo electrónico" @bind="_usuario.CorreoElectronico" class="form-control">
+                <br>
+                <input placeholder="Contraseña" type="password" @bind="_usuario.Contrasena" class="form-control">
+            </div>
+            <br>
+            <button class="btn btn-primary" @onclick="ConfirmarLogin">Confirmar</button>
+        </div>
+    </div>
+}
+
+@if(bloqueRegistro)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>Ingrese sus datos personales</h3>
+            <div class="descripcion">
+                <input placeholder="Nombre" @bind="_usuario.Nombre" class="form-control">
+                <br>
+                <input placeholder="Apellido" @bind="_usuario.Apellido" class="form-control">
+                <br>
+                <input placeholder="Correo electrónico" @bind="_usuario.CorreoElectronico" class="form-control">
+                <br>
+                <input placeholder="Contraseña" type="password" @bind="_usuario.Contrasena" class="form-control">
+            </div>
+            <br>
+            <button class="btn btn-primary" @onclick="ConfirmarRegistro">Confirmar</button>
+        </div>
+    </div>
+}
+
+@code {
+
+    private Usuario _usuario = new Usuario();
+    private Usuario? sesionIniciada;
+    private bool bloqueInicio = false;
+    private bool bloqueRegistro = false;
+    private string mensajeError = "";
+    private bool mostrarErrorInicio = false;
+    private bool mostrarErrorRegistro = false;
+
+    [Parameter]
+    public EventCallback Seguir{get;set;}
+
+    public void IniciarSesion()
+    {   
+        bloqueInicio = true;
+        Seguir.InvokeAsync();
+    }
+    public void Registrarse()
+    {
+        bloqueRegistro = true;
+        Seguir.InvokeAsync();
+    }
+
+    private void ConfirmarLogin()
+    {
+        try
+        {
+            if(login.ValidarSesion(_usuario)) //Negado por como se planteó el método
+            {
+                bloqueInicio = false;
+                sesionIniciada = Sesion.GetSesion();
+                Navegador.NavigateTo("/inicio", forceLoad: true);
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarErrorInicio = true;
+            bloqueInicio = false;
+        }
+    }
+
+    private void ConfirmarRegistro()
+    {
+        try
+        {
+            if(register.Registrar(_usuario))
+            {
+                bloqueRegistro = false;
+                _usuario = new Usuario();
+                bloqueInicio = true;
+            }
+        }
+        catch(Exception e)
+        {
+            bloqueRegistro = false;
+            mensajeError = e.Message;
+            mostrarErrorRegistro = true;
+        }
+    }
+
+    public void CerrarSesion()
+    {
+        Sesion.Cerrar();
+    }
+
+    private void CerrarMensajeInicio()
+    {
+        mostrarErrorInicio = false;
+        bloqueInicio = true;
+    }
+
+    private void CerrarMensajeRegistro()
+    {
+        mostrarErrorRegistro = false;
+        bloqueRegistro = true;
+    }
+
+}

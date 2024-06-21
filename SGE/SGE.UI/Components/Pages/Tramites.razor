@@ -1,0 +1,198 @@
+@page "/tramites"
+@rendermode InteractiveServer
+@inject NavigationManager Navegador;
+@inject CasoDeUsoTramiteBaja TramiteBaja
+@inject CasoDeUsoTramiteConsultaPorEtiqueta TramitesEtiqueta
+@inject CasoDeUsoTramiteModificacion TramiteModificacion
+@inject CasoDeUsoListarTramite ListarTramites
+@inject ISesion Sesion
+@inject IServicioAutorizacion autorizacion
+
+<PageTitle>Trámites</PageTitle>
+
+@if(mostrarError)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>@mensajeError</h3>
+            <button class= "btn btn-primary" @onclick="()=>CerrarMensaje()">Aceptar</button>
+        </div>
+    </div>
+}
+
+<div>
+    @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "TramiteAlta"))
+    {
+        <button class = "btn btn-primary" @onclick="()=>AltaTramite()">Agregar Trámite</button>
+    }
+    <br> <br>
+    <button class = "btn btn-primary" @onclick="()=>MostrarPorEtiqueta()">Filtrar por etiqueta</button>
+</div>
+
+<br>
+
+@if(mostrar)
+{
+    <div class="dialogo-contenedor">
+        <div class="dialogo-contenido">
+            <h3>Elija la etiqueta para filtrar</h3>
+            <button class= "btn btn-primary" @onclick="()=>TodosTramites()">Borrar filtro</button>
+            <br> <br>
+            @foreach(string etiqueta in TramiteEtiquetas)
+            {
+                <div style="padding: 5px;">
+                    <button class="btn btn-secondary" @onclick="()=>BuscarTramites(etiqueta)">@etiqueta</button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    table, th, td {
+        border: 1px solid rgb(0, 0, 0.5);
+        border-collapse : collapse;
+        padding: 15px;
+        width: auto;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    th, td {
+        background-color : rgb(255, 255, 255);
+    }
+</style>
+<table style>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>ID de Expediente</th>
+            <th>Etiqueta</th>
+            <th>Descripción</th>
+            <th>Creación</th>
+            <th>Última modificación</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(Tramite tramite in _lista)
+        {
+            <tr>
+                <td>@tramite.ID</td>
+                <td>@tramite.ExpedienteId</td>
+                <td>@tramite.Etiqueta</td>
+                <td>@tramite.Descripcion</td>
+                <td>@tramite.FechaYHoraCreacion</td>
+                <td>@tramite.FechaYHoraModificacion</td>
+                @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "TramiteModificacion")){
+                    <td>
+                        <button class= "btn btn-primary" @onclick="()=>ModificarTramite(tramite)">Modificar</button>
+                    </td>
+                }
+                
+                @if(sesionActual != null && autorizacion.PoseeElPermiso(sesionActual, "TramiteBaja")){
+                    <td>
+                        <button class="btn btn-danger" @onclick="()=>ConfirmarEliminado(tramite)">Eliminar</button>
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+    
+</table>
+
+<Confirmacion @ref="dialogo" OnConfirmado="()=>EliminarTramite(_tramiteEliminado)"/>
+
+@code
+{
+    private string mensajeError = "";
+    private bool mostrarError = false;
+    Confirmacion dialogo = null!;
+    private Tramite? _tramiteEliminado = null;
+    private bool mostrar = false;
+    private Usuario? sesionActual;
+    private List<Tramite> _lista = new List<Tramite>();
+    private List<string> TramiteEtiquetas = new List<string>
+    {
+        "Escrito_Presentado",
+        "Pase_Estudio",
+        "Despacho",
+        "Resolucion",
+        "Notificacion",
+        "Pase_Archivo"
+    };
+
+    protected override void OnInitialized()
+    {
+        TodosTramites();
+        this.sesionActual = Sesion.GetSesion();
+    }
+    
+    private void ConfirmarEliminado(Tramite tramite)
+    {
+        _tramiteEliminado = tramite;
+        dialogo.Mensaje = $"¿Desea eliminar el Trámite {tramite.ID}?";
+        dialogo.Mostrar();
+    }
+    private void EliminarTramite(Tramite tramite)
+    {
+        try
+        {
+            if(tramite != null)
+            {
+                TramiteBaja.Ejecutar(tramite.ID, sesionActual.Id);
+                _lista = ListarTramites.Ejecutar();
+            }
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;   
+        }
+    }
+    private void AltaTramite()
+    {
+        Navegador.NavigateTo($"TramiteHelp/");
+    }
+    private void ModificarTramite(Tramite tramite)
+    {
+        Navegador.NavigateTo($"TramiteHelp/{tramite.ID}");
+    }
+    private void MostrarPorEtiqueta()
+    {
+        mostrar = true;
+        StateHasChanged();
+    }
+    private void BuscarTramites(string etiquetaBuscada)
+    {
+        try
+        {
+            _lista = TramitesEtiqueta.Ejecutar(etiquetaBuscada);
+            mostrar = false;
+            StateHasChanged();
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+    private void TodosTramites()
+    {
+        try
+        {
+            _lista = ListarTramites.Ejecutar();
+            mostrar = false;
+            StateHasChanged();
+        }
+        catch(Exception e)
+        {
+            mensajeError = e.Message;
+            mostrarError = true;
+        }
+    }
+
+    private void CerrarMensaje()
+    {
+        mostrarError = false;
+    }
+
+}
